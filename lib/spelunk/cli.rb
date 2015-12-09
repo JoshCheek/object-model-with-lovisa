@@ -40,9 +40,9 @@ class Spelunk
 
     attr_accessor :stdin, :stdout, :stderr, :argv
     attr_accessor :filename, :spelunk, :height, :width, :keys
-    attr_accessor :display, :callstack_index
+    attr_accessor :display
 
-    def initialize(stdin, stdout, stderr, argv, initial_display=:callstack, keys=DEFAULT_KEYS)
+    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:callstack], keys=DEFAULT_KEYS)
       self.stdin              = stdin
       self.stdout             = stdout
       self.stderr             = stderr
@@ -51,12 +51,12 @@ class Spelunk
       self.filename           = File.expand_path(argv[0])
       self.spelunk            = Spelunk.new filename
       self.display            = initial_display
-      self.callstack_index    = 0
       self.height, self.width = stdin.winsize
     end
 
     def event(event)
       return unless spelunk.process? event
+      spelunk.process(event)
       display_screen(event)
       loop do
         key = keys[stdin.readpartial(100)]
@@ -70,13 +70,13 @@ class Spelunk
         when :self, :locals, :instance_variables, :binding, :callstack
           self.display = key
         when :up
-          self.callstack_index = [stack.length-1, callstack_index+1].min
+          spelunk.up!
         when :down
-          self.callstack_index = [0, callstack_index-1].max
+          spelunk.down!
         when :right
-          # currently nothing to do
+          spelunk.right!
         when :left
-          # currently nothing to do
+          spelunk.left!
         end
       end
     end
@@ -96,7 +96,6 @@ class Spelunk
       code_first_lineno = 1
       code_last_lineno  = raw_code.lines.length
 
-
       # reset
       output = ""
       output << topleft << clear
@@ -104,7 +103,7 @@ class Spelunk
       # gutter
       linenum_width = 3
       arrow_width   = 4
-      gutter_width  = linenum_width + arrow_width
+      gutter_width  = linenum_width + arrow_width + 2 # 1 for the colon, 1 for the empty col between arrow and num
       output << highlighted_gutter(
         current_line:  event.fetch(:lineno, -1),
         linenum_width: linenum_width,
@@ -118,11 +117,49 @@ class Spelunk
       # code
       output << highlighted_code(
         raw_code: raw_code,
-        xpos:     gutter_width+3,
+        xpos:     gutter_width+1,
         ypos:     1,
       )
 
-      # locals_view(event)
+      # custom display
+      display_xpos = 1 + gutter_width + raw_code.lines.max_by(&:length).chomp.length
+      display_ypos = 1
+
+      display = DISPLAYS[:locals] # FIXME delete this
+
+      case display
+      when DISPLAYS[:callstack]
+        output << display_callstack(
+          xpos: display_xpos,
+          ypos: display_ypos,
+          spelunk: spelunk,
+        )
+      when DISPLAYS[:self]
+        output << display_self(
+          xpos: display_xpos,
+          ypos: display_ypos,
+          spelunk: spelunk,
+        )
+      when DISPLAYS[:locals]
+        output << display_locals(
+          xpos: display_xpos,
+          ypos: display_ypos,
+          spelunk: spelunk,
+        )
+      when DISPLAYS[:instance_variables]
+        output << display_instance_variables(
+          xpos: display_xpos,
+          ypos: display_ypos,
+          spelunk: spelunk,
+        )
+      when DISPLAYS[:binding]
+        output << display_binding(
+          xpos: display_xpos,
+          ypos: display_ypos,
+          spelunk: spelunk,
+        )
+      else raise "WHAT?! #{display.inspect}"
+      end
 
       # nav
       output << bottom_left << up << up
@@ -152,14 +189,6 @@ class Spelunk
       highlighted
     end
 
-    # def locals_view(event)
-    #   binding = event[:binding]
-    #   locals = binding.local_variables.map { |name| [name, binding.local_variable_get(name)] }.to_h
-    #   locals_view = highlight_ruby locals.pretty_inspect do |line, line_number|
-    #     "\e[#{line_number};40H#{line.chomp}"
-    #   end
-    # end
-
     def highlighted_code(xpos:, ypos:, raw_code:)
       highlight_ruby(raw_code) do |line, lineno|
         "\e[#{lineno + ypos - 1};#{xpos}H#{line}"
@@ -173,5 +202,36 @@ class Spelunk
       formatter.format(tokens).lines.each(&:chomp!).map.with_index(1, &block).join
     end
 
+    def display_callstack(xpos:, ypos:)
+      '' # ??
+    end
+
+    def display_self(xpos:, ypos:)
+      '' # ??
+    end
+
+    def display_locals(xpos:, ypos:, spelunk:)
+      binding = spelunk.current.binding
+
+      locals = binding.local_variables.map do |name|
+        [name, binding.local_variable_get(name)]
+      end.to_h
+
+      at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
+
+      at[1, 1] <<
+        "\e[45m LOCALS \e[49m" <<
+        highlight_ruby(locals.pretty_inspect) { |line, line_number|
+          at[line_number+2, 1] << line.chomp
+        }
+    end
+
+    def display_instance_variables(xpos:, ypos:)
+      '' # ??
+    end
+
+    def display_binding(xpos:, ypos:)
+      '' # ??
+    end
   end
 end
