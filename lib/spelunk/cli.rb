@@ -16,7 +16,7 @@ require 'spelunk'
 class Spelunk
   class CLI
     attr_reader :stdin, :stdout, :stderr, :argv
-    attr_reader :filename, :spelunk
+    attr_reader :filename, :spelunk, :height, :width
 
     def initialize(stdin, stdout, stderr, argv)
       @stdin    = stdin
@@ -25,6 +25,7 @@ class Spelunk
       @argv     = argv
       @filename = File.expand_path(argv[0])
       @spelunk  = Spelunk.new filename
+      @height, @width = stdin.winsize
     end
 
     def event(event)
@@ -53,54 +54,47 @@ class Spelunk
     private
 
     def highlighted_body(event)
-      linenum_width = 4
-      arrow_width   = 3
+      linenum_width = 3
+      arrow_width   = 4
       gutter_width  = arrow_width + linenum_width
       code_width    = spelunk.raw_body.lines.max_by(&:size).chomp.size
       code_width   += code_width + gutter_width
 
-      # =====  highlighted code =====
+      editor_view = editor_view(event, arrow_width)
+      editor_view << locals_view(event) << reset_cursor(editor_view)
+    end
+
+    def reset_cursor(editor_view)
+      "\e[#{editor_view.lines.count};1H"
+    end
+
+    def locals_view(event)
+      binding = event[:binding]
+      locals = binding.local_variables.map { |name| [name, binding.local_variable_get(name)] }.to_h
+      locals_view = highlight_ruby locals.pretty_inspect do |line, line_number|
+        "\e[#{line_number};40H#{line.chomp}"
+      end
+    end
+
+    def highlight_ruby(ruby_code, &block)
+      formatter   = Rouge::Formatters::Terminal256.new theme: 'molokai'
+      lexer       = Rouge::Lexers::Ruby.new
+      tokens      = lexer.lex ruby_code
+      formatter.format(tokens).lines.map.with_index(1, &block).join
+    end
+
+    def editor_view(event, arrow_width)
+      line        = event.fetch :lineno, -1
       line        = event.fetch :lineno, -1
       min_index   = [line-10, 0].max
       max_index   = min_index+20
 
-      highlighted_body = highlight_ruby(spelunk.raw_body)
-      editor_view = highlighted_body.lines.map.with_index(1) { |code, lineno|
+      editor_view = highlight_ruby(spelunk.raw_body) do |code, lineno|
         format = "%#{arrow_width}s"
         gutter = (format % '') + "\e[34m"
         gutter = "\e[41;37m" + (format % ' -> ') if line == lineno
         gutter + ("%4d\e[0m: #{code}\r" % lineno)
-      }.join
-
-      # =====  truncate the code  =====
-      height, width = stdin.winsize
-      rhs_cols = width - code_width
-      truncate_code = "\e[0m" << height.times.map do |y|
-        "\e[#{y+1};40H" << (" "*rhs_cols)
-      end.join
-
-      # =====  binding  =====
-      binding = event[:binding]
-      locals = binding.local_variables.map { |name|
-        [name, binding.local_variable_get(name)]
-      }.to_h
-
-      locals_view = highlight_ruby(locals.pretty_inspect).lines.map.with_index(1) do |line, line_number|
-        "\e[#{line_number};40H#{line.chomp}"
-      end.join
-
-      # =====  Reset cursor  =====
-      reset_cursor = "\e[#{editor_view.lines.count};1H"
-
-      # =====  All together  =====
-      editor_view + truncate_code + locals_view + reset_cursor
-    end
-
-    def highlight_ruby(ruby_code)
-      formatter   = Rouge::Formatters::Terminal256.new theme: 'molokai'
-      lexer       = Rouge::Lexers::Ruby.new
-      tokens      = lexer.lex ruby_code
-      formatter.format(tokens)
+      end
     end
   end
 end
