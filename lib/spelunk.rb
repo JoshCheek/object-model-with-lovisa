@@ -73,7 +73,7 @@ class Spelunk
     self.processable_events = {
       line: ->(event) {
         # (execute code on a new line)
-        current.line(event)
+        stackframes.last.line(event)
       },
       class: ->(event) {
         # (start a class or module definition)
@@ -116,6 +116,10 @@ class Spelunk
 
   def current
     stackframes[current_index]
+  end
+
+  def each(&block)
+    stackframes.each &block
   end
 
   def up!

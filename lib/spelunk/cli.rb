@@ -154,7 +154,8 @@ class Spelunk
         output << display_binding(
           xpos: display_xpos,
           ypos: display_ypos,
-          spelunk: spelunk,
+          frame: spelunk.current,
+          name:  'BINDING'
         )
       else raise "WHAT?! #{display.inspect}"
       end
@@ -200,12 +201,27 @@ class Spelunk
       formatter.format(tokens).lines.each(&:chomp!).map.with_index(1, &block).join
     end
 
-    def display_callstack(xpos:, ypos:)
-      '' # ??
+    def display_callstack(xpos:, ypos:, spelunk:)
+      height = ypos
+      spelunk.each.map do |frame|
+        frame_height, frame_display = binding_with_info(
+          xpos: xpos,
+          ypos: height,
+          frame: frame,
+          indentation: '',
+          name:  frame.method_id,
+        )
+        height += frame_height
+        frame_display
+      end.join
     end
 
-    def display_binding(xpos:, ypos:, spelunk:, indentation:'')
-      frame  = spelunk.current
+    def display_binding(*args)
+      _height, display = binding_with_info(*args)
+      display
+    end
+
+    def binding_with_info(xpos:, ypos:, frame:, name:, indentation:'')
       ivars  = frame.ivars
       locals = frame.locals
 
@@ -213,19 +229,21 @@ class Spelunk
 
       out = ''
       height = 0
-      out << at[height+=1, 1] << "#{indentation}\e[45m SELF \e[49m"
-      out << at[height+=1, 1] << "#{indentation}  \e[46mClass:\e[49m"
-      out << at[height+=1, 1] << "#{indentation}    #{frame.object.class}"
-      out << at[height+=1, 1] << "#{indentation}  \e[46mInstance Variables\e[49m"
+      out << at[height+=1, 1] << "#{indentation}\e[43m #{name} \e[49m"
+      out << at[height+=1, 1] << "#{indentation}  \e[45m SELF \e[49m"
+      out << at[height+=1, 1] << "#{indentation}    \e[46mClass:\e[49m"
+      out << at[height+=1, 1] << "#{indentation}      #{frame.object.class}"
+      out << at[height+=1, 1] << "#{indentation}    \e[46mInstance Variables\e[49m"
       out << highlight_ruby(ivars.pretty_inspect) { |line, line_number|
         height += 1
-        at[line_number+height-1, 1] << "#{indentation}    #{line.chomp}"
+        at[line_number+height-1, 1] << "#{indentation}      #{line.chomp}"
       }
-      out << at[height, 1] << "#{indentation}\e[45m LOCALS \e[49m" <<
+      out << at[height, 1] << "#{indentation}  \e[45m LOCALS \e[49m" <<
         highlight_ruby(locals.pretty_inspect) { |line, line_number|
-          at[height+line_number, 1] << indentation << line.chomp
+          height+=1
+          at[height+line_number-1, 1] << indentation << '    ' << line.chomp
         }
-      out
+      [height, out]
     end
   end
 end
