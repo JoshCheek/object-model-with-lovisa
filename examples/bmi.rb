@@ -1,4 +1,3 @@
-STDOUT.puts 'a'
 class User
   STDOUT.puts 'b'
   attr_accessor :name, :age, :weight, :height
@@ -16,8 +15,8 @@ class User
   def info
     summary = "#{name} is #{age} "
     summary << "years old, "
-    summary << "#{weight} kilos, "
-    summary << "#{height} cm, and has a BMI of "
+    summary << "#{weight} lbs, "
+    summary << "#{height} in, and has a BMI of "
     summary << bmi.to_s
     summary
   end
