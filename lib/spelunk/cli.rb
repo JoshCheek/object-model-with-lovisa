@@ -204,7 +204,7 @@ class Spelunk
       '' # ??
     end
 
-    def display_binding(xpos:, ypos:, spelunk:)
+    def display_binding(xpos:, ypos:, spelunk:, indentation:'')
       frame  = spelunk.current
       ivars  = frame.ivars
       locals = frame.locals
@@ -212,18 +212,18 @@ class Spelunk
       at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
 
       out = ''
-      out << at[1, 1] << "\e[45m SELF \e[49m"
-      out << at[2, 1] << "  \e[46mClass:\e[49m"
-      out << at[3, 1] << "    #{frame.object.class}"
-      out << at[4, 1] << "  \e[46mInstance Variables\e[49m"
-      height = 4
+      height = 0
+      out << at[height+=1, 1] << "#{indentation}\e[45m SELF \e[49m"
+      out << at[height+=1, 1] << "#{indentation}  \e[46mClass:\e[49m"
+      out << at[height+=1, 1] << "#{indentation}    #{frame.object.class}"
+      out << at[height+=1, 1] << "#{indentation}  \e[46mInstance Variables\e[49m"
       out << highlight_ruby(ivars.pretty_inspect) { |line, line_number|
         height += 1
-        at[line_number+height-1, 1] << "    #{line.chomp}"
+        at[line_number+height-1, 1] << "#{indentation}    #{line.chomp}"
       }
-      out << at[height, 1] << "\e[45m LOCALS \e[49m" <<
+      out << at[height, 1] << "#{indentation}\e[45m LOCALS \e[49m" <<
         highlight_ruby(locals.pretty_inspect) { |line, line_number|
-          at[height+line_number, 1] << line.chomp
+          at[height+line_number, 1] << indentation << line.chomp
         }
       out
     end

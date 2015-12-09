@@ -33,15 +33,20 @@ cli = Spelunk::CLI.new($stdin, $stdout, $stderr, ARGV)
 cleanups = []
 tp = TracePoint.new do |tp|
   begin
-    result = cli.event(
+    event = {
       event:         tp.event,
       path:          File.expand_path(tp.path),
       lineno:        tp.lineno,
       method_id:     tp.method_id,
       defined_class: tp.defined_class,
       binding:       tp.binding.eval('binding'),
-      object:        tp.self
-    )
+      object:        tp.self,
+    }
+    begin
+      event[:return_value] = tp.return_value
+    rescue
+    end
+    result = cli.event(event)
     exit if result == :exit
   rescue Exception
     cleanups.each &:call

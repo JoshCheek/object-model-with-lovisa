@@ -34,16 +34,17 @@ require 'pp'
 
 class Spelunk
   class Stackframe
-    attr_accessor :event
+    attr_accessor :event, :return_value
     def initialize(event:nil)
       self.event = event
+      self.return_value = nil
     end
 
     def line(event)
       self.event = event
+      self.return_value = event.fetch(:return_value, return_value)
     end
 
-    def return_value() event.fetch :return_value end
     def bnd()          event.fetch :binding      end
     def object()       event.fetch :object       end
     def lineno()       event.fetch :lineno       end
