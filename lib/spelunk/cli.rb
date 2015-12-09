@@ -42,7 +42,7 @@ class Spelunk
     attr_accessor :filename, :spelunk, :height, :width, :keys
     attr_accessor :display
 
-    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:callstack], keys=DEFAULT_KEYS)
+    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:locals], keys=DEFAULT_KEYS)
       self.stdin              = stdin
       self.stdout             = stdout
       self.stderr             = stderr
@@ -57,8 +57,8 @@ class Spelunk
     def event(event)
       return unless spelunk.process? event
       spelunk.process(event)
-      display_screen(event)
       loop do
+        display_screen(event)
         key = keys[stdin.readpartial(100)]
         case key
         when :noop, :next
@@ -124,8 +124,6 @@ class Spelunk
       # custom display
       display_xpos = 1 + gutter_width + raw_code.lines.max_by(&:length).chomp.length
       display_ypos = 1
-
-      display = DISPLAYS[:locals] # FIXME delete this
 
       case display
       when DISPLAYS[:callstack]
@@ -206,12 +204,25 @@ class Spelunk
       '' # ??
     end
 
-    def display_self(xpos:, ypos:)
-      '' # ??
+    def display_self(xpos:, ypos:, spelunk:)
+      object = spelunk.current
+      ivars  = object.ivars.pretty_inspect
+
+      at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
+
+      out = ''
+      out << at[1, 1] << "\e[45m SELF \e[49m"
+      out << at[3, 1] << "Class:"
+      out << at[4, 1] << "  #{object.class}"
+      out << at[5, 1] << "Instance Variables"
+      out << highlight_ruby(ivars) { |line, line_number|
+        at[line_number+6, 1] << "  #{line.chomp}"
+      }
+      out
     end
 
     def display_locals(xpos:, ypos:, spelunk:)
-      binding = spelunk.current.binding
+      binding = spelunk.current.bnd
 
       locals = binding.local_variables.map do |name|
         [name, binding.local_variable_get(name)]
@@ -226,11 +237,11 @@ class Spelunk
         }
     end
 
-    def display_instance_variables(xpos:, ypos:)
+    def display_instance_variables(xpos:, ypos:, spelunk:)
       '' # ??
     end
 
-    def display_binding(xpos:, ypos:)
+    def display_binding(xpos:, ypos:, spelunk:)
       '' # ??
     end
   end

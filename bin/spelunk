@@ -39,8 +39,8 @@ tp = TracePoint.new do |tp|
       lineno:        tp.lineno,
       method_id:     tp.method_id,
       defined_class: tp.defined_class,
-      binding:       tp.binding,
-      self:          tp.self
+      binding:       tp.binding.eval('binding'),
+      object:        tp.self
     )
     exit if result == :exit
   rescue Exception

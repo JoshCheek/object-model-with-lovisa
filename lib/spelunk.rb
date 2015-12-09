@@ -25,9 +25,12 @@ require 'pp'
 #   :method_id,
 #   :defined_class,
 #   :binding,
-#   :self,
+#   :object,
 #   :return_value,
 #   :raised_exception]]
+
+# $myfile = File.open("/Users/josh/code/jsl/object-model-with-lovisa/out", "a")
+# at_exit { $myfile.close }
 
 class Spelunk
   class Stackframe
@@ -41,11 +44,17 @@ class Spelunk
     end
 
     def return_value() event.fetch :return_value end
-    def binding()      event.fetch :binding      end
-    def self()         event.fetch :self         end
+    def bnd()          event.fetch :binding      end
+    def object()       event.fetch :object       end
     def lineno()       event.fetch :lineno       end
     def path()         event.fetch :path         end
     def method_id()    event.fetch :method_id    end
+
+    def ivars
+      object.instance_variables.map { |name|
+        [name, object.instance_variable_get(name)]
+      }.to_h
+    end
   end
 
   attr_accessor :path, :stackframes, :current_index, :processable_events
