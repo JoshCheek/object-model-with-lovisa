@@ -63,8 +63,8 @@ class Spelunk
         case key
         when :noop, :next
           break nil
-        when :quit
-          break key
+        when :exit
+          return key
         when :interrupt
           Process.kill 'INT', Process.pid
         when :self, :locals, :instance_variables, :binding, :callstack
@@ -84,35 +84,85 @@ class Spelunk
     private
 
     def display_screen(event)
-      topleft    = "\e[H"
-      clear      = "\e[2J"
-      newline    = "\r\n"
-      event_name = "\e[45m#{event[:event]}\e[49m"
-      prompt     = "\e[41;37m Press a key \e[49;37m"
-      output     = "" << topleft << clear << highlighted_body(event) << newline << newline << event_name << newline << prompt
+      topleft     = "\e[H"
+      clear       = "\e[2J"
+      newline     = "\r\n"
+      event_name  = "\e[45m#{event[:event]}\e[49m"
+      prompt      = "\e[41;37m Press a key \e[49;37m"
+      bottom_left = "\e[#{height};1H"
+      up          = "\e[A"
+
+      raw_code          = spelunk.raw_body
+      code_first_lineno = 1
+      code_last_lineno  = raw_code.lines.length
+
+
+      # reset
+      output = ""
+      output << topleft << clear
+
+      # gutter
+      linenum_width = 3
+      arrow_width   = 4
+      gutter_width  = linenum_width + arrow_width
+      output << highlighted_gutter(
+        current_line:  event.fetch(:lineno, -1),
+        linenum_width: linenum_width,
+        arrow_width:   arrow_width,
+        xpos:          1,
+        ypos:          1,
+        first_num:     code_first_lineno,
+        last_num:      code_last_lineno,
+      )
+
+      # code
+      output << highlighted_code(
+        raw_code: raw_code,
+        xpos:     gutter_width+3,
+        ypos:     1,
+      )
+
+      # locals_view(event)
+
+      # nav
+      output << bottom_left << up << up
+      output << event_name << newline
+      output << prompt
+
       stdout.print(output)
     end
 
-    def highlighted_body(event)
-      linenum_width = 3
-      arrow_width   = 4
-      gutter_width  = arrow_width + linenum_width
-      code_width    = spelunk.raw_body.lines.max_by(&:size).chomp.size
-      code_width   += code_width + gutter_width
+    def highlighted_gutter(linenum_width:, arrow_width:, xpos:, ypos:, first_num:, last_num:, current_line:)
+      colour       = "\e[34m"
+      highlighted  = "" << colour
 
-      editor_view = editor_view(event, arrow_width)
-      editor_view << locals_view(event) << reset_cursor(editor_view)
+      position_format = "\e[%d;#{xpos}H"
+      arrow_format    = "%#{arrow_width}s"
+      num_format      = "%#{linenum_width}s:"
+
+      first_num.upto(last_num).map do |lineno|
+        if current_line == lineno
+          arrow = "\e[41;37m#{arrow_format % ' -> '}\e[49;39m#{colour}"
+        else
+          arrow = arrow_format % ''
+        end
+        highlighted << (position_format % (lineno+ypos-1)) << arrow << (num_format % lineno)
+      end
+
+      highlighted
     end
 
-    def reset_cursor(editor_view)
-      "\e[#{editor_view.lines.count};1H"
-    end
+    # def locals_view(event)
+    #   binding = event[:binding]
+    #   locals = binding.local_variables.map { |name| [name, binding.local_variable_get(name)] }.to_h
+    #   locals_view = highlight_ruby locals.pretty_inspect do |line, line_number|
+    #     "\e[#{line_number};40H#{line.chomp}"
+    #   end
+    # end
 
-    def locals_view(event)
-      binding = event[:binding]
-      locals = binding.local_variables.map { |name| [name, binding.local_variable_get(name)] }.to_h
-      locals_view = highlight_ruby locals.pretty_inspect do |line, line_number|
-        "\e[#{line_number};40H#{line.chomp}"
+    def highlighted_code(xpos:, ypos:, raw_code:)
+      highlight_ruby(raw_code) do |line, lineno|
+        "\e[#{lineno + ypos - 1};#{xpos}H#{line}"
       end
     end
 
@@ -120,21 +170,8 @@ class Spelunk
       formatter   = Rouge::Formatters::Terminal256.new theme: 'molokai'
       lexer       = Rouge::Lexers::Ruby.new
       tokens      = lexer.lex ruby_code
-      formatter.format(tokens).lines.map.with_index(1, &block).join
+      formatter.format(tokens).lines.each(&:chomp!).map.with_index(1, &block).join
     end
 
-    def editor_view(event, arrow_width)
-      line        = event.fetch :lineno, -1
-      line        = event.fetch :lineno, -1
-      min_index   = [line-10, 0].max
-      max_index   = min_index+20
-
-      editor_view = highlight_ruby(spelunk.raw_body) do |code, lineno|
-        format = "%#{arrow_width}s"
-        gutter = (format % '') + "\e[34m"
-        gutter = "\e[41;37m" + (format % ' -> ') if line == lineno
-        gutter + ("%4d\e[0m: #{code}\r" % lineno)
-      end
-    end
   end
 end
