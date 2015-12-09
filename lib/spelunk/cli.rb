@@ -91,6 +91,7 @@ class Spelunk
       prompt      = "\e[41;37m Press a key \e[49;37m"
       bottom_left = "\e[#{height};1H"
       up          = "\e[A"
+      reset       = "\e[0m"
 
       raw_code          = spelunk.raw_body
       code_first_lineno = 1
@@ -164,6 +165,7 @@ class Spelunk
       output << bottom_left << up << up
       output << event_name << newline
       output << prompt
+      output << reset
 
       stdout.print(output)
     end
