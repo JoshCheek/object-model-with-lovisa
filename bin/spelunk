@@ -1,6 +1,4 @@
 #!/usr/bin/env ruby
-$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
-require 'spelunk'
 
 # display self
 # display the stack
@@ -35,52 +33,44 @@ require 'spelunk'
 # # >> }
 
 
-filename  = File.expand_path ARGV[0]
-line_nums = Spelunk.new(filename)
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+require 'spelunk/cli'
+cli = Spelunk::CLI.new($stdin, $stdout, $stderr, ARGV)
 
 tp = TracePoint.new do |tp|
-  next unless tp.path == filename
-  line_nums.record event:            tp.event,
-                   lineno:           tp.lineno,
-                   method_id:        tp.method_id,
-                   defined_class:    tp.defined_class,
-                   binding:          tp.binding,
-                   self:             tp.self
-end
-
-tp.enable
-
-require File.expand_path(filename)
-
-at_exit do
-  tp.disable
-  $stdin.raw do
-    until line_nums.done?
-      $stdout.print "\e[H\e[2J#{line_nums.highlighted}\n\n\r\e[45m#{line_nums.event[:event]}\r\n\n"
-      $stdout.print "\e[41;37m Press a key \e[0m"
-      char = $stdin.getc
-      direction = :forward
-      if char.ord == 3 # C-c
-        break
-      elsif char == "\e"
-        $stdin.getc # [
-        direction = {
-          'A' => :backward,
-          'B' => :forward,
-          'C' => :forward,
-          'D' => :backward,
-        }[$stdin.getc] # A / B / C / D
-      elsif char == "k"
-        direction = :backward
-      elsif char == "q"
-        exit
-      end
-
-      if direction == :forward
-        line_nums.forward
-      else
-        line_nums.backward
-      end
-    end
+  begin
+    result = cli.event event:            tp.event,
+                       path:             File.expand_path(tp.path),
+                       lineno:           tp.lineno,
+                       method_id:        tp.method_id,
+                       defined_class:    tp.defined_class,
+                       binding:          tp.binding,
+                       self:             tp.self
+    exit if result == :done
+  rescue Exception
+    tp.disable
+    $stdin.cooked!
+    raise
   end
 end
+
+$stdin.raw!
+tp.enable
+begin
+  require File.expand_path(cli.filename)
+ensure
+  tp.disable
+  $stdin.cooked!
+end
+
+
+    # def each
+    #   return to_enum :each unless block_given?
+    #   until instream.eof?
+    #     @unprocessed_chunks << instream.read_partial(1000)
+    #     while @unprocessed_chunks.any?
+    #       key = process_chunk
+    #       yield key if key
+    #     end
+    #   end
+    # end

@@ -1,4 +1,6 @@
+STDOUT.puts 'a'
 class User
+  STDOUT.puts 'b'
   attr_accessor :name, :age, :weight, :height
   def initialize(name, age, weight, height)
     self.name   = name
