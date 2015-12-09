@@ -1,11 +1,5 @@
 #!/usr/bin/env ruby
 
-# display self
-# display the stack
-# identify which classes get changed and display the change as it happens
-# don't require the whole program to fit on the screen
-# display the returns better
-
 
 # If I want to show C source code:
 #

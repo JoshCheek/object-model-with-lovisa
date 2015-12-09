@@ -1,5 +1,18 @@
 require 'spelunk'
 
+# * Keybindings to swap display: (s)elf, (l)ocals, (i)nstance, (b)inding, (c)allstack, ...
+# * add cutoff top/bottom
+
+# Display options:
+#   The stack style:
+#     show line number, method name, current return value (mimic a stackframe)
+#     * Get access to the return value
+#   Self:
+#     display self
+# don't require the whole program to fit on the screen
+# display the returns better
+
+
 class Spelunk
   class CLI
     attr_reader :stdin, :stdout, :stderr, :argv
@@ -40,6 +53,12 @@ class Spelunk
     private
 
     def highlighted_body(event)
+      linenum_width = 4
+      arrow_width   = 3
+      gutter_width  = arrow_width + linenum_width
+      code_width    = spelunk.raw_body.lines.max_by(&:size).chomp.size
+      code_width   += code_width + gutter_width
+
       # =====  highlighted code =====
       line        = event.fetch :lineno, -1
       min_index   = [line-10, 0].max
@@ -47,14 +66,15 @@ class Spelunk
 
       highlighted_body = highlight_ruby(spelunk.raw_body)
       editor_view = highlighted_body.lines.map.with_index(1) { |code, lineno|
-        gutter = "   \e[34m"
-        gutter = "\e[41;37m ->" if line == lineno
+        format = "%#{arrow_width}s"
+        gutter = (format % '') + "\e[34m"
+        gutter = "\e[41;37m" + (format % ' -> ') if line == lineno
         gutter + ("%4d\e[0m: #{code}\r" % lineno)
       }.join
 
       # =====  truncate the code  =====
-      height, width = $stdin.winsize
-      rhs_cols = width - 40
+      height, width = stdin.winsize
+      rhs_cols = width - code_width
       truncate_code = "\e[0m" << height.times.map do |y|
         "\e[#{y+1};40H" << (" "*rhs_cols)
       end.join
@@ -68,7 +88,6 @@ class Spelunk
       locals_view = highlight_ruby(locals.pretty_inspect).lines.map.with_index(1) do |line, line_number|
         "\e[#{line_number};40H#{line.chomp}"
       end.join
-      # go to column 40
 
       # =====  Reset cursor  =====
       reset_cursor = "\e[#{editor_view.lines.count};1H"
