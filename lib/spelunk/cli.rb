@@ -202,18 +202,12 @@ class Spelunk
     end
 
     def display_callstack(xpos:, ypos:, spelunk:)
-      height = ypos
-      spelunk.each.map do |frame|
-        frame_height, frame_display = binding_with_info(
-          xpos: xpos,
-          ypos: height,
-          frame: frame,
-          indentation: '',
-          name:  frame.method_id,
-        )
-        height += frame_height
-        frame_display
-      end.join
+      out = "\e[#{ypos};#{xpos}H\e[45m  CALLSTACK  \e[49m"
+      out << spelunk.each.map.with_index { |frame, i|
+        ypos += 1
+        name = frame.method_id || frame.object.inspect
+        "\e[#{ypos};#{xpos}H\e[34m#{i.to_s.<<(":").ljust(3)}\e[39m  line=#{frame.lineno.to_s.ljust(3)} #{name}"
+      }.join
     end
 
     def display_binding(*args)
