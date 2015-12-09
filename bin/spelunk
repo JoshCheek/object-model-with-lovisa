@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+require 'spelunk'
+
+# display self
+# display the stack
+# identify which classes get changed and display the change as it happens
+# don't require the whole program to fit on the screen
+# display the returns better
+
+
+# If I want to show C source code:
+#
+# require 'yard'
+# prydoc_paths = Gem.find_latest_files('pry-doc')
+#
+# if !prydoc_paths || prydoc_paths.empty?
+#   raise "You need to `gem install pry-doc`"
+# end
+#
+# prydoc_path  = prydoc_paths.find { |path| File.basename(path) == 'pry-doc' }
+# path         = prydoc_path + '/core_docs_22'
+# registry     = YARD::Registry.load_yardoc path
+# puts registry['Class#new'].source
+#
+# # >> VALUE
+# # >> rb_class_new_instance(int argc, const VALUE *argv, VALUE klass)
+# # >> {
+# # >>     VALUE obj;
+# # >>
+# # >>     obj = rb_obj_alloc(klass);
+# # >>     rb_obj_call_init(obj, argc, argv);
+# # >>
+# # >>     return obj;
+# # >> }
+
+
+filename  = File.expand_path ARGV[0]
+line_nums = Spelunk.new(filename)
+
+tp = TracePoint.new do |tp|
+  next unless tp.path == filename
+  line_nums.record event:            tp.event,
+                   lineno:           tp.lineno,
+                   method_id:        tp.method_id,
+                   defined_class:    tp.defined_class,
+                   binding:          tp.binding,
+                   self:             tp.self
+end
+
+tp.enable
+
+require File.expand_path(filename)
+
+at_exit do
+  tp.disable
+  $stdin.raw do
+    until line_nums.done?
+      $stdout.print "\e[H\e[2J#{line_nums.highlighted}\n\n\r\e[45m#{line_nums.event[:event]}\r\n\n"
+      $stdout.print "\e[41;37m Press a key \e[0m"
+      char = $stdin.getc
+      direction = :forward
+      if char.ord == 3 # C-c
+        break
+      elsif char == "\e"
+        $stdin.getc # [
+        direction = {
+          'A' => :backward,
+          'B' => :forward,
+          'C' => :forward,
+          'D' => :backward,
+        }[$stdin.getc] # A / B / C / D
+      elsif char == "k"
+        direction = :backward
+      elsif char == "q"
+        exit
+      end
+
+      if direction == :forward
+        line_nums.forward
+      else
+        line_nums.backward
+      end
+    end
+  end
+end
