@@ -42,7 +42,7 @@ class Spelunk
     attr_accessor :filename, :spelunk, :height, :width, :keys
     attr_accessor :display
 
-    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:locals], keys=DEFAULT_KEYS)
+    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:binding], keys=DEFAULT_KEYS)
       self.stdin              = stdin
       self.stdout             = stdout
       self.stderr             = stderr
@@ -204,45 +204,28 @@ class Spelunk
       '' # ??
     end
 
-    def display_self(xpos:, ypos:, spelunk:)
-      object = spelunk.current
-      ivars  = object.ivars.pretty_inspect
+    def display_binding(xpos:, ypos:, spelunk:)
+      frame  = spelunk.current
+      ivars  = frame.ivars
+      locals = frame.locals
 
       at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
 
       out = ''
       out << at[1, 1] << "\e[45m SELF \e[49m"
-      out << at[3, 1] << "Class:"
-      out << at[4, 1] << "  #{object.class}"
-      out << at[5, 1] << "Instance Variables"
-      out << highlight_ruby(ivars) { |line, line_number|
-        at[line_number+6, 1] << "  #{line.chomp}"
+      out << at[2, 1] << "  \e[46mClass:\e[49m"
+      out << at[3, 1] << "    #{frame.object.class}"
+      out << at[4, 1] << "  \e[46mInstance Variables\e[49m"
+      height = 4
+      out << highlight_ruby(ivars.pretty_inspect) { |line, line_number|
+        height += 1
+        at[line_number+height-1, 1] << "    #{line.chomp}"
       }
-      out
-    end
-
-    def display_locals(xpos:, ypos:, spelunk:)
-      binding = spelunk.current.bnd
-
-      locals = binding.local_variables.map do |name|
-        [name, binding.local_variable_get(name)]
-      end.to_h
-
-      at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
-
-      at[1, 1] <<
-        "\e[45m LOCALS \e[49m" <<
+      out << at[height, 1] << "\e[45m LOCALS \e[49m" <<
         highlight_ruby(locals.pretty_inspect) { |line, line_number|
-          at[line_number+2, 1] << line.chomp
+          at[height+line_number, 1] << line.chomp
         }
-    end
-
-    def display_instance_variables(xpos:, ypos:, spelunk:)
-      '' # ??
-    end
-
-    def display_binding(xpos:, ypos:, spelunk:)
-      '' # ??
+      out
     end
   end
 end

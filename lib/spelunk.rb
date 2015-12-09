@@ -55,6 +55,12 @@ class Spelunk
         [name, object.instance_variable_get(name)]
       }.to_h
     end
+
+    def locals
+      bnd.local_variables.map { |name|
+        [name, bnd.local_variable_get(name)]
+      }.to_h
+    end
   end
 
   attr_accessor :path, :stackframes, :current_index, :processable_events
