@@ -1,10 +1,7 @@
 require 'spelunk'
 
-# * Keybindings to swap display: (s)elf, (l)ocals, (i)nstance, (b)inding, (c)allstack, ...
-# * add cutoff top/bottom
-
+# Add cutoff top/bottom
 # Display options:
-#   The stack style:
 #     show line number, method name, current return value (mimic a stackframe)
 #     * Get access to the return value
 #   Self:
@@ -71,8 +68,7 @@ class Spelunk
       newline     = "\r\n"
       event_name  = "\e[45m#{event.type}\e[49m"
       prompt      = "\e[41;37m Press a key \e[49;37m"
-      bottom_left = "\e[#{height};1H"
-      up          = "\e[A"
+      down        = "\e[B"
       reset       = "\e[0m"
 
       raw_code          = spelunk.raw_body
@@ -88,7 +84,7 @@ class Spelunk
       arrow_width   = 4
       gutter_width  = linenum_width + arrow_width + 2 # 1 for the colon, 1 for the empty col between arrow and num
       output << highlighted_gutter(
-        current_line:  event.lineno,
+        current_line:  spelunk.current.lineno,
         linenum_width: linenum_width,
         arrow_width:   arrow_width,
         xpos:          1,
@@ -119,8 +115,7 @@ class Spelunk
       end
 
       # nav
-      output << bottom_left << up << up
-      output << event_name << newline
+      output << "\e[#{1+code_last_lineno};1H" << down
       output << prompt
       output << reset
 
@@ -128,12 +123,13 @@ class Spelunk
     end
 
     def display_callstack(xpos:, ypos:, spelunk:)
-      out = "\e[#{ypos};#{xpos}H\e[45m  CALLSTACK  \e[49m"
-      out << spelunk.each.map.with_index { |frame, i|
+      out = "\e[#{ypos};#{xpos}H\e[46;37m  CALLSTACK  \e[49;39m"
+      out << spelunk.each.map { |frame|
         ypos += 1
+        is_current = spelunk.current == frame
         name = frame.method_id || frame.object.inspect
-        line = "\e[#{ypos};#{xpos}H\e[34m#{i.to_s.<<(":").ljust(3)}\e[39m  line=#{frame.lineno.to_s.ljust(3)} #{name}"
-        if spelunk.current == frame
+        line = "\e[#{ypos};#{xpos}H\e[34m#{frame.lineno.to_s.<<(":").rjust(3)}\e[39m #{"\e[41;37m " if is_current}#{name}#{" \e[49;39m" if is_current}"
+        if is_current
           bnd_height, bnd_out = binding_with_info(
             xpos:  xpos,
             ypos:  ypos+1,

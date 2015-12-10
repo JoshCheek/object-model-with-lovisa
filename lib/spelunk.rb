@@ -5,21 +5,8 @@ require 'spelunk/stackframe'
 require 'pp'
 
 # KNOWN EVENTS http://www.rubydoc.info/stdlib/core/TracePoint
-# :line         execute code on a new line
-# :class        start a class or module definition
-# :end          finish a class or module definition
-# :call         call a Ruby method
-# :return       return from a Ruby method
-# :c_call       call a C-language routine
-# :c_return     return from a C-language routine
-# :raise        raise an exception
-# :b_call       event hook at block entry
-# :b_return     event hook at block ending
-# :thread_begin event hook at thread beginning
-# :thread_end   event hook at thread ending
-
-# $myfile = File.open("/Users/josh/code/jsl/object-model-with-lovisa/out", "a")
-# at_exit { $myfile.close }
+# :line :class :end :call :return :c_call :c_return :raise
+# :b_call :b_return :thread_begin :thread_end
 
 class Spelunk
   attr_accessor :path, :stackframes, :current_index, :processable_events
