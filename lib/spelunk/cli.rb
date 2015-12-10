@@ -87,7 +87,7 @@ class Spelunk
       topleft     = "\e[H"
       clear       = "\e[2J"
       newline     = "\r\n"
-      event_name  = "\e[45m#{event[:event]}\e[49m"
+      event_name  = "\e[45m#{event.type}\e[49m"
       prompt      = "\e[41;37m Press a key \e[49;37m"
       bottom_left = "\e[#{height};1H"
       up          = "\e[A"
@@ -105,7 +105,7 @@ class Spelunk
       arrow_width   = 4
       gutter_width  = linenum_width + arrow_width + 2 # 1 for the colon, 1 for the empty col between arrow and num
       output << highlighted_gutter(
-        current_line:  event.fetch(:lineno, -1),
+        current_line:  event.lineno,
         linenum_width: linenum_width,
         arrow_width:   arrow_width,
         xpos:          1,

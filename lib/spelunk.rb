@@ -1,5 +1,6 @@
 require 'rouge'
 require 'io/console'
+require 'spelunk/event'
 require 'pp'
 
 # KNOWN EVENTS http://www.rubydoc.info/stdlib/core/TracePoint
@@ -42,14 +43,13 @@ class Spelunk
 
     def line(event)
       self.event = event
-      self.return_value = event.fetch(:return_value, return_value)
     end
 
-    def bnd()          event.fetch :binding      end
-    def object()       event.fetch :object       end
-    def lineno()       event.fetch :lineno       end
-    def path()         event.fetch :path         end
-    def method_id()    event.fetch :method_id    end
+    def bnd()          event.bnd          end
+    def object()       event.object       end
+    def lineno()       event.lineno       end
+    def path()         event.path         end
+    def method_id()    event.method_id    end
 
     def ivars
       object.instance_variables.map { |name|
@@ -107,11 +107,11 @@ class Spelunk
   end
 
   def process?(event)
-    event[:path] == path && processable_events.key?(event[:event])
+    event.path == path && processable_events.key?(event.type)
   end
 
   def process(event)
-    processable_events.fetch(event[:event]).call(event)
+    processable_events.fetch(event.type).call(event)
   end
 
   def current
