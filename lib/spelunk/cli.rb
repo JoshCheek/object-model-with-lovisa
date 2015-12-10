@@ -19,34 +19,24 @@ class Spelunk
     DEFAULT_KEYS["q"]    = :exit
     DEFAULT_KEYS[3.chr]  = :interrupt # C-c
     DEFAULT_KEYS[4.chr]  = :next      # C-d
-    DEFAULT_KEYS["s"]    = :self
-    DEFAULT_KEYS["l"]    = :locals
-    DEFAULT_KEYS["i"]    = :instance_variables
-    DEFAULT_KEYS["b"]    = :binding
-    DEFAULT_KEYS["c"]    = :callstack
     DEFAULT_KEYS["\e[A"] = :up
     DEFAULT_KEYS["\e[B"] = :down
-    DEFAULT_KEYS["\e[C"] = :right
-    DEFAULT_KEYS["\e[D"] = :left
     DEFAULT_KEYS["\r"]   = :next
     DEFAULT_KEYS["\n"]   = :next
+    DEFAULT_KEYS["k"]    = :up
+    DEFAULT_KEYS["j"]    = :down
+    DEFAULT_KEYS["n"]    = :next
 
-    DISPLAYS                      = Hash.new { |h, k| raise "No key #{k.inspect} in #{h.inspect}" }
-    DISPLAYS[:callstack]          = :callstack
-    DISPLAYS[:self]               = :self
-    DISPLAYS[:locals]             = :locals
-    DISPLAYS[:instance_variables] = :instance_variables
-    DISPLAYS[:binding]            = :binding
+    DISPLAYS             = Hash.new { |h, k| raise "No key #{k.inspect} in #{h.inspect}" }
+    DISPLAYS[:callstack] = :callstack
 
-    attr_accessor :stdin, :stdout, :stderr, :argv
+    attr_accessor :stdin, :stdout
     attr_accessor :filename, :spelunk, :height, :width, :keys
     attr_accessor :display
 
-    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:binding], keys=DEFAULT_KEYS)
+    def initialize(stdin, stdout, stderr, argv, initial_display=DISPLAYS[:callstack], keys=DEFAULT_KEYS)
       self.stdin              = stdin
       self.stdout             = stdout
-      self.stderr             = stderr
-      self.argv               = argv
       self.keys               = keys
       self.filename           = File.expand_path(argv[0])
       self.spelunk            = Spelunk.new filename
@@ -61,22 +51,12 @@ class Spelunk
         display_screen(event)
         key = keys[stdin.readpartial(100)]
         case key
-        when :noop, :next
-          break nil
-        when :exit
-          return key
-        when :interrupt
-          Process.kill 'INT', Process.pid
-        when :self, :locals, :instance_variables, :binding, :callstack
-          self.display = key
-        when :up
-          spelunk.up!
-        when :down
-          spelunk.down!
-        when :right
-          spelunk.right!
-        when :left
-          spelunk.left!
+        when :noop      then # noop
+        when :next      then break nil
+        when :exit      then return key
+        when :interrupt then Process.kill 'INT', Process.pid
+        when :up        then spelunk.up!
+        when :down      then spelunk.down!
         end
       end
     end
@@ -129,34 +109,9 @@ class Spelunk
       case display
       when DISPLAYS[:callstack]
         output << display_callstack(
-          xpos: display_xpos,
-          ypos: display_ypos,
+          xpos:    display_xpos,
+          ypos:    display_ypos,
           spelunk: spelunk,
-        )
-      when DISPLAYS[:self]
-        output << display_self(
-          xpos: display_xpos,
-          ypos: display_ypos,
-          spelunk: spelunk,
-        )
-      when DISPLAYS[:locals]
-        output << display_locals(
-          xpos: display_xpos,
-          ypos: display_ypos,
-          spelunk: spelunk,
-        )
-      when DISPLAYS[:instance_variables]
-        output << display_instance_variables(
-          xpos: display_xpos,
-          ypos: display_ypos,
-          spelunk: spelunk,
-        )
-      when DISPLAYS[:binding]
-        output << display_binding(
-          xpos: display_xpos,
-          ypos: display_ypos,
-          frame: spelunk.current,
-          name:  'BINDING'
         )
       else raise "WHAT?! #{display.inspect}"
       end
@@ -169,6 +124,27 @@ class Spelunk
 
       stdout.print(output)
     end
+
+    def display_callstack(xpos:, ypos:, spelunk:)
+      out = "\e[#{ypos};#{xpos}H\e[45m  CALLSTACK  \e[49m"
+      out << spelunk.each.map.with_index { |frame, i|
+        ypos += 1
+        name = frame.method_id || frame.object.inspect
+        line = "\e[#{ypos};#{xpos}H\e[34m#{i.to_s.<<(":").ljust(3)}\e[39m  line=#{frame.lineno.to_s.ljust(3)} #{name}"
+        if spelunk.current == frame
+          bnd_height, bnd_out = binding_with_info(
+            xpos:  xpos,
+            ypos:  ypos+=1,
+            frame: spelunk.current,
+            indentation: '     ',
+          )
+          ypos += bnd_height
+          line << bnd_out
+        end
+        line
+      }.join
+    end
+
 
     def highlighted_gutter(linenum_width:, arrow_width:, xpos:, ypos:, first_num:, last_num:, current_line:)
       colour       = "\e[34m"
@@ -203,21 +179,7 @@ class Spelunk
       formatter.format(tokens).lines.each(&:chomp!).map.with_index(1, &block).join
     end
 
-    def display_callstack(xpos:, ypos:, spelunk:)
-      out = "\e[#{ypos};#{xpos}H\e[45m  CALLSTACK  \e[49m"
-      out << spelunk.each.map.with_index { |frame, i|
-        ypos += 1
-        name = frame.method_id || frame.object.inspect
-        "\e[#{ypos};#{xpos}H\e[34m#{i.to_s.<<(":").ljust(3)}\e[39m  line=#{frame.lineno.to_s.ljust(3)} #{name}"
-      }.join
-    end
-
-    def display_binding(*args)
-      _height, display = binding_with_info(*args)
-      display
-    end
-
-    def binding_with_info(xpos:, ypos:, frame:, name:, indentation:'')
+    def binding_with_info(xpos:, ypos:, frame:, indentation:'')
       ivars  = frame.ivars
       locals = frame.locals
 
@@ -225,19 +187,18 @@ class Spelunk
 
       out = ''
       height = 0
-      out << at[height+=1, 1] << "#{indentation}\e[43m #{name} \e[49m"
-      out << at[height+=1, 1] << "#{indentation}  \e[45m SELF \e[49m"
-      out << at[height+=1, 1] << "#{indentation}    \e[46mClass:\e[49m"
-      out << at[height+=1, 1] << "#{indentation}      #{frame.object.class}"
-      out << at[height+=1, 1] << "#{indentation}    \e[46mInstance Variables\e[49m"
+      out << at[height+=1, 1] << "#{indentation}\e[45m SELF \e[49m"
+      out << at[height+=1, 1] << "#{indentation}  \e[46mClass:\e[49m"
+      out << at[height+=1, 1] << "#{indentation}    #{frame.object.class}"
+      out << at[height+=1, 1] << "#{indentation}  \e[46mInstance Variables\e[49m"
       out << highlight_ruby(ivars.pretty_inspect) { |line, line_number|
         height += 1
-        at[line_number+height-1, 1] << "#{indentation}      #{line.chomp}"
+        at[line_number+height-1, 1] << "#{indentation}    #{line.chomp}"
       }
-      out << at[height, 1] << "#{indentation}  \e[45m LOCALS \e[49m" <<
+      out << at[height, 1] << "#{indentation}\e[45m LOCALS \e[49m" <<
         highlight_ruby(locals.pretty_inspect) { |line, line_number|
           height+=1
-          at[height+line_number-1, 1] << indentation << '    ' << line.chomp
+          at[height+line_number-1, 1] << indentation << '  ' << line.chomp
         }
       [height, out]
     end
