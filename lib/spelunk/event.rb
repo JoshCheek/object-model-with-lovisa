@@ -16,6 +16,17 @@ class Spelunk
       event
     end
 
+    def self.new_toplevel
+      event           = new
+      event.type      = :line
+      event.path      = '...'
+      event.lineno    = 1
+      event.method_id = :main
+      event.bnd       = TOPLEVEL_BINDING
+      event.object    = TOPLEVEL_BINDING.eval('self')
+      event
+    end
+
     def return?
       type == :return || type == :c_return || type == :b_return
     end
