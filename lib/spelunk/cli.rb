@@ -141,6 +141,10 @@ class Spelunk
         end
         line
       }.join
+
+      last_returned = (spelunk.last && spelunk.last.last_returned)
+      out << "\e[#{ypos+=1};#{xpos}H\e[34m#{last_returned[:from]} returned: #{last_returned[:value].inspect}" if last_returned
+      out
     end
 
 

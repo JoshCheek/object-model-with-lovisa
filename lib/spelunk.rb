@@ -30,6 +30,7 @@ class Spelunk
         # (finish a class or module definition)
         self.current_index = nil
         stackframes.pop
+        stackframes.last.returned(event)
       },
       call: ->(event) {
         # call a Ruby method
@@ -40,6 +41,7 @@ class Spelunk
         # return from a Ruby method
         self.current_index = nil
         stackframes.pop
+        stackframes.last.returned(event)
       },
       b_call: ->(event) {
         # event hook at block entry
@@ -50,6 +52,7 @@ class Spelunk
         # event hook at block ending
         self.current_index = nil
         stackframes.pop
+        stackframes.last.returned(event)
       },
     }
   end
@@ -82,6 +85,10 @@ class Spelunk
   def down!
     self.current_index = [0, current_index-1].max
     self
+  end
+
+  def last
+    stackframes.last
   end
 
   def current_index

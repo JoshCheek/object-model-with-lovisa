@@ -1,8 +1,9 @@
 class Spelunk
   class Stackframe
-    attr_accessor :event
+    attr_accessor :event, :last_returned
 
     def initialize(event:)
+      self.last_returned = nil
       self.event = event
     end
 
@@ -10,11 +11,16 @@ class Spelunk
       self.event = event
     end
 
-    def bnd()          event.bnd          end
-    def object()       event.object       end
-    def lineno()       event.lineno       end
-    def path()         event.path         end
-    def method_id()    event.method_id    end
+    def bnd()        event.bnd        end
+    def object()     event.object     end
+    def lineno()     event.lineno     end
+    def path()       event.path       end
+    def method_id()  event.method_id  end
+
+    attr_accessor :last_returned
+    def returned(frame)
+      self.last_returned = {from: frame.method_id, value: frame.return_value}
+    end
 
     def ivars
       object.instance_variables.map { |name|
