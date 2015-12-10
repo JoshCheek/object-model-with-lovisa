@@ -27,9 +27,13 @@ end
 def serve(dish, guests)
   pretty_preparations = dish.join(", ")
   pretty_guests = guests.join(", ")
-  "To serve #{pretty_guests} I had to #{pretty_preparations}."
+  "To serve #{pretty_guests} " <<
+    "I had to #{pretty_preparations}."
 end
 
-ingredients = ["spaghetti", "onion", "olive oil", "tomatoes", "garlic", "basil"]
-guests      = ["Deborah", "Scott", "Kimmie", "Marina", "Brennan"]
+ingredients = ["spaghetti", "onion",
+               "olive oil", "tomatoes",
+               "garlic", "basil"]
+guests      = ["Deborah", "Scott",
+               "Kimmie", "Marina", "Brennan"]
 puts cook_dinner(ingredients, guests)

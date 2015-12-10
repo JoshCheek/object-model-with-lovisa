@@ -107,7 +107,7 @@ class Spelunk
       case display
       when DISPLAYS[:callstack]
         output << display_callstack(
-          xpos:    display_xpos,
+          xpos:    display_xpos+1,
           ypos:    display_ypos,
           spelunk: spelunk,
         )
