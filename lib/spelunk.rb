@@ -29,13 +29,41 @@ class Spelunk
     self.stackframes = [Stackframe.new(event: Event.new_toplevel)]
     self.current_index = 0
     self.processable_events = {
-      line:     ->(event) { stackframes.last.line event },                   # execute code on a new line
-      class:    ->(event) { stackframes.push Stackframe.new(event: event) }, # start a class or module definition
-      end:      ->(event) { stackframes.pop },                               # finish a class or module definition
-      call:     ->(event) { stackframes.push Stackframe.new(event: event) }, # call a Ruby method
-      return:   ->(event) { stackframes.pop },                               # return from a Ruby method
-      b_call:   ->(event) { stackframes.push Stackframe.new(event: event) }, # event hook at block entry
-      b_return: ->(event) { stackframes.pop },                               # event hook at block ending
+      line: ->(event) {
+        # (execute code on a new line)
+        self.current_index = nil
+        stackframes.last.line(event)
+      },
+      class: ->(event) {
+        # (start a class or module definition)
+        self.current_index = nil
+        stackframes.push(Stackframe.new(event: event))
+      },
+      end: ->(event) {
+        # (finish a class or module definition)
+        self.current_index = nil
+        stackframes.pop
+      },
+      call: ->(event) {
+        # call a Ruby method
+        self.current_index = nil
+        stackframes.push(Stackframe.new(event: event))
+      },
+      return: ->(event) {
+        # return from a Ruby method
+        self.current_index = nil
+        stackframes.pop
+      },
+      b_call: ->(event) {
+        # event hook at block entry
+        self.current_index = nil
+        stackframes.push(Stackframe.new(event: event))
+      },
+      b_return: ->(event) {
+        # event hook at block ending
+        self.current_index = nil
+        stackframes.pop
+      },
     }
   end
 
@@ -67,5 +95,9 @@ class Spelunk
   def down!
     self.current_index = [0, current_index-1].max
     self
+  end
+
+  def current_index
+    @current_index ||= stackframes.length-1
   end
 end
