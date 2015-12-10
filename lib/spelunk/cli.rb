@@ -19,13 +19,15 @@ class Spelunk
     DEFAULT_KEYS["q"]    = :exit
     DEFAULT_KEYS[3.chr]  = :interrupt # C-c
     DEFAULT_KEYS[4.chr]  = :next      # C-d
-    DEFAULT_KEYS["\e[A"] = :up
-    DEFAULT_KEYS["\e[B"] = :down
     DEFAULT_KEYS["\r"]   = :next
     DEFAULT_KEYS["\n"]   = :next
-    DEFAULT_KEYS["k"]    = :up
-    DEFAULT_KEYS["j"]    = :down
     DEFAULT_KEYS["n"]    = :next
+
+    # inverted b/c we draw it down from the top
+    DEFAULT_KEYS["\e[A"] = :down
+    DEFAULT_KEYS["\e[B"] = :up
+    DEFAULT_KEYS["k"]    = :down
+    DEFAULT_KEYS["j"]    = :up
 
     DISPLAYS             = Hash.new { |h, k| raise "No key #{k.inspect} in #{h.inspect}" }
     DISPLAYS[:callstack] = :callstack
@@ -134,7 +136,7 @@ class Spelunk
         if spelunk.current == frame
           bnd_height, bnd_out = binding_with_info(
             xpos:  xpos,
-            ypos:  ypos+=1,
+            ypos:  ypos+1,
             frame: spelunk.current,
             indentation: '     ',
           )
@@ -173,33 +175,23 @@ class Spelunk
     end
 
     def highlight_ruby(ruby_code, &block)
-      formatter   = Rouge::Formatters::Terminal256.new theme: 'molokai'
-      lexer       = Rouge::Lexers::Ruby.new
-      tokens      = lexer.lex ruby_code
-      formatter.format(tokens).lines.each(&:chomp!).map.with_index(1, &block).join
+      formatter = Rouge::Formatters::Terminal256.new theme: 'molokai'
+      lexer     = Rouge::Lexers::Ruby.new
+      tokens    = lexer.lex ruby_code
+      formatter.format(tokens).lines.map(&:chomp).map.with_index(1, &block).join
     end
 
     def binding_with_info(xpos:, ypos:, frame:, indentation:'')
-      ivars  = frame.ivars
-      locals = frame.locals
-
-      at = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
-
-      out = ''
-      height = 0
-      out << at[height+=1, 1] << "#{indentation}\e[45m SELF \e[49m"
-      out << at[height+=1, 1] << "#{indentation}  \e[46mClass:\e[49m"
-      out << at[height+=1, 1] << "#{indentation}    #{frame.object.class}"
-      out << at[height+=1, 1] << "#{indentation}  \e[46mInstance Variables\e[49m"
-      out << highlight_ruby(ivars.pretty_inspect) { |line, line_number|
-        height += 1
-        at[line_number+height-1, 1] << "#{indentation}    #{line.chomp}"
+      at      = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
+      out     = ''
+      height  = 0
+      binding = { locals: frame.locals,
+                  self: { class: frame.object.class,
+                          ivars: frame.ivars }}
+      out << highlight_ruby(binding.pretty_inspect) { |line, line_number|
+        height = line_number-1
+        at[line_number, 1] << "#{indentation}#{line.chomp}"
       }
-      out << at[height, 1] << "#{indentation}\e[45m LOCALS \e[49m" <<
-        highlight_ruby(locals.pretty_inspect) { |line, line_number|
-          height+=1
-          at[height+line_number-1, 1] << indentation << '  ' << line.chomp
-        }
       [height, out]
     end
   end
