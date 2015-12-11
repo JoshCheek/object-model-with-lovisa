@@ -1,6 +1,19 @@
 #!/usr/bin/env ruby
 
 
+# # I can get a heap dump with this code:
+# require 'objspace'
+# File.open "heap.json", "w" do |f|
+#   ObjectSpace.dump_all output: f
+# end
+#
+# # So if I were to re-work on it, could just run the code in a separate process,
+# # tracing all the events, and heap dumping on each event. Then diff the heaps
+# # to save space (heap dump looks to be about 5mb of JSON). That can all be easily tested.
+# # The rebuilding can all be easily tested. This, then, allows traversal forwards and backwards in time.
+# # as well as allowing a full traversal of all objects.
+
+
 # If I want to show C source code:
 #
 # require 'yard'
