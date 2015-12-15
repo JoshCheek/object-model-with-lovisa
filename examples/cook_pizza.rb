@@ -6,8 +6,9 @@ end
 
 def toss_dough
   toss_count = rand(8)
-  toss_count.times do
+  toss_count.times do |i|
     puts "Toss the dough"
+    puts i
   end
 end
 
