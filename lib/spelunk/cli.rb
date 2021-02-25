@@ -1,4 +1,35 @@
 require 'spelunk'
+require 'io/console'
+
+module PP::PPMethods
+  def pp_hash(obj)
+    show_key = -> k do
+      pp k
+      text '=>'
+    end
+    hard_break = false
+    hard_break = true if obj.keys.sort == [:locals, :self]
+    if obj.keys.all? { |k| k.is_a? Symbol }
+      key_width = (obj.keys.map(&:size).max||0) + 2
+      show_key = -> k do
+        # text "#{k}:".ljust(key_width)
+        text "#{k}: "
+      end
+    end
+    group(1, '{', '}') {
+      seplist(obj, nil, :each_pair) {|k, v|
+        group {
+          show_key[k]
+          group(1) {
+            breakable ''
+            pp v
+          }
+        }
+      }
+    }
+  end
+end
+
 
 # Add cutoff top/bottom
 # Display options:
@@ -185,14 +216,22 @@ class Spelunk
       at      = ->(y, x) { "\e[#{y + ypos - 1};#{xpos + x - 1}H" }
       out     = ''
       height  = 0
-      binding = { locals: frame.locals,
-                  self: { class: frame.object.class,
-                          ivars: frame.ivars }}
-      out << highlight_ruby(binding.pretty_inspect) { |line, line_number|
+      binding = {
+        self: { class: frame.object.class, ivars: frame.ivars },
+        locals: frame.locals,
+      }
+      out << highlight_ruby(pretty_inspect_st(binding, xpos)) { |line, line_number|
         height = line_number-1
         at[line_number, 1] << "#{indentation}#{line.chomp}"
       }
       [height, out]
+    end
+
+    def pretty_inspect_st(hash, xpos)
+      _, screen_width = stdout.winsize
+      output = ""
+      PP.pp hash, output, screen_width-xpos-6 # the 6 is for line numbers, indentation, etc
+      output
     end
   end
 end

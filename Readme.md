@@ -9,7 +9,7 @@ Resources
 * [Quiz 2](https://quizzes-ruby-object-model.herokuapp.com/2)
 * [Quiz 3](https://quizzes-ruby-object-model.herokuapp.com/3)
 * [The current version of this lesson](https://github.com/JoshCheek/object-model-hash-style)
-* [The first version onf Object Model](https://github.com/JoshCheek/ruby-object-model)
+* [The first version of Object Model](https://github.com/JoshCheek/ruby-object-model)
 
 Stack
 -----

@@ -1,7 +1,7 @@
 class Node
   def initialize(value)
-   @value = value
-   @next_node = nil
+    @value = value
+    @next_node = nil
   end
 
   def add(node)

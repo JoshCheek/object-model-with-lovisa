@@ -31,9 +31,7 @@ def serve(dish, guests)
     "I had to #{pretty_preparations}."
 end
 
-ingredients = ["spaghetti", "onion",
-               "olive oil", "tomatoes",
-               "garlic", "basil"]
-guests      = ["Deborah", "Scott",
-               "Kimmie", "Marina", "Brennan"]
-puts cook_dinner(ingredients, guests)
+puts cook_dinner(
+  %w[spaghetti onion olive\ oil tomatoes garlic basil],
+  %w[Deborah Scott Kimmie Marina Brennan],
+)
