@@ -8,18 +8,6 @@ more consistent and easier to understand. It will be useful for understanding
 If anything doesn't jive with your understanding, ask and I can explain it if
 it doesn't muddy the model too much.
 
-`VALUE`s
---------
-
-A `VALUE` in Ruby is a number that is used to find an object.
-You can think of a `VALUE` as a "pointer", the memory address of the object,
-the location of the object in RAM.
-
-For optimization purposes, Ruby does get creative with this and represent some
-objects completely within the bits of the VALUE itself. You only need to know
-that to understand why doing math in Ruby isn't horribly inefficient. Outside
-of that, consider a `VALUE` to be a pointer (a memory address).
-
 
 The 3 important structures
 --------------------------
@@ -105,7 +93,6 @@ You can see an old definition of classes here: https://github.com/ruby/ruby/blob
 Interact:
 * https://github.com/JoshCheek/object_model_8th_light/blob/8346d880c75259f29693baba1ed2aa87c08b9084/challenges/super.rb
 * https://github.com/JoshCheek/object_model_8th_light/blob/8346d880c75259f29693baba1ed2aa87c08b9084/challenges/super2.rb
-*
 
 What next?
 ----------
