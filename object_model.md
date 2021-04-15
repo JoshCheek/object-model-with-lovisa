@@ -19,7 +19,7 @@ as C structs, but if you don't know C, then you can think about them as hashes.
 
 ### Structure 1: Bindings
 
-Bindings are the context execute is executed in.  They have:
+Bindings are the context code is executed in.  They have:
 
 * `self` the `VALUE` of the object we are implicitly in
   * instance variables come from here, and are set here
